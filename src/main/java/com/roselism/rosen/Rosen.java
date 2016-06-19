@@ -27,7 +27,8 @@ import java.util.concurrent.TimeUnit;
  * @version 1.4
  */
 public class Rosen {
-    public static final Converter<InputStream, Bitmap> InStream2Bitmap = input -> BitmapFactory.decodeStream(input);
+    public static final Converter<InputStream, Bitmap> InStream2BitmapStragegy = input -> BitmapFactory.decodeStream(input); // 流转bitmap策略
+    public static final Converter<InputStream, String> InStream2StringStragegy = input -> new InStream2String().convert(input); // 流转String策略
 
     private static final String TAG = "Rosen";
     private static final boolean DEBUG = true;
@@ -75,6 +76,19 @@ public class Rosen {
 
         Getter<R> getter = new Getter<>();
         getter.get(url, callBack, onErrorListener, converter);
+    }
+
+    /**
+     * 发送请求
+     *
+     * @param url
+     * @param callBack
+     * @since 1.3
+     */
+    public static <R> void get(final String url, final ResultCallBack<R> callBack, Converter<InputStream, R> converter) {
+        if (DEBUG) Log.d(TAG, "post() called with: " + "url = [" + url + "]");
+
+        get(url, callBack, simpleErrorListener, converter);
     }
 
     public void setConfig(Config config) {
@@ -125,6 +139,8 @@ public class Rosen {
     }
 
     /**
+     * 配置类，用于配置Rosen框架
+     *
      * @since 1.4
      */
     public static class Config {

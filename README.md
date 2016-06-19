@@ -6,12 +6,7 @@ Android 轻量级网络框架
 ## Simple
 
 
-
-
 ### request a bitmap &amp show in imageview
-
-
-
 
 ```java
 Rosen.get("http://188.188.5.20:8080/zhbj/10007/1452327318UU91.jpg",
@@ -28,16 +23,11 @@ Rosen.get("http://188.188.5.20:8080/zhbj/10007/1452327318UU91.jpg",
             }
         }, Rosen.InStream2Bitmap);
 
-
-
 ```
 
 
 with lambda &amp method reference
 ```java
-Rosen.get("http://188.188.5.20:8080/zhbj/10007/1452327318UU91.jpg",
-        imageview::setImageBitmap,
-        Throwable::printStackTrace, Rosen.InStream2Bitmap);
-
+Rosen.get("url", imageview::setImageBitmap, Throwable::printStackTrace, Rosen.InStream2Bitmap);
 ```
 
