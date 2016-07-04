@@ -13,13 +13,14 @@ Android 轻量级网络框架
 
 
 
-## Simple
 
+## How to use ?
 
-### request a bitmap &amp show in imageview
+### request a bitmap &amp; show in imageview
 
 ```java
-Rosen.get("http://188.188.5.20:8080/zhbj/10007/1452327318UU91.jpg",
+String picUrl = "http://img3.duitang.com/uploads/item/201605/25/20160525093455_Qa2yR.thumb.700_0.jpeg";
+Rosen.get(picUrl,
         new Rosen.ResultCallBack<Bitmap>() {
             @Override
             public void onResult(Bitmap bm) {
@@ -51,3 +52,5 @@ Rosen.getImage(picUrl, imageview::setImageBitmap);
 
 ```
 
+
+## Simple
