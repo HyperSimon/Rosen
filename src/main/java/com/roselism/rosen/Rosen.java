@@ -8,12 +8,14 @@ import android.util.Log;
 import android.util.LruCache;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.roselism.rosen.convert.Converter;
 import com.roselism.rosen.convert.InStream2String;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,9 +38,22 @@ public class Rosen {
     private final static Converter noNeedConverter = parameter -> parameter;
     private static final Config defaultConfig = new Config()
             .setConnectTimeout(5000)
-            .setReadTimeout(5000);
+            .setReadTimeout(5000)
+            .setMethod(Config.METHOD_GET);
     private static Config config = defaultConfig;
 
+
+    public static void requestString(final String url, final ResultCallBack<String> callBack) {
+        requestString(url, callBack, simpleErrorListener);
+    }
+
+    /**
+     * 请求一个 String
+     *
+     * @param url
+     * @param callBack
+     * @param onErrorListener
+     */
     public static void requestString(final String url, final ResultCallBack<String> callBack, final OnErrorListener onErrorListener) {
         Getter<String> getter = new Getter<>();
         getter.getString(url, callBack, onErrorListener);
@@ -56,12 +71,34 @@ public class Rosen {
         try {
             URL url = new URL(urlPath);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setConnectTimeout(config.getConnectTimeout());
+            configConnection(connection);
             return optional.fromNullable(connection);
         } catch (Exception e) {
             e.printStackTrace();
             return optional.fromNullable(null);
         }
+    }
+
+    private static void configConnection(HttpURLConnection connection) {
+        try {
+            connection.setConnectTimeout(config.getConnectTimeout());
+            connection.setReadTimeout(config.getReadTimeout());
+            connection.setRequestMethod(config.getMethod());
+        } catch (ProtocolException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 发送get请求
+     * <note>if you want to get a string data, you can use requestString() instand</note>
+     *
+     * @param url
+     * @param callBack
+     * @since 1.3
+     */
+    public static <R> void get(final String url, final ResultCallBack<R> callBack, Converter<InputStream, R> converter) {
+        get(url, callBack, simpleErrorListener, converter);
     }
 
     /**
@@ -78,21 +115,9 @@ public class Rosen {
         getter.get(url, callBack, onErrorListener, converter);
     }
 
-    /**
-     * 发送请求
-     *
-     * @param url
-     * @param callBack
-     * @since 1.3
-     */
-    public static <R> void get(final String url, final ResultCallBack<R> callBack, Converter<InputStream, R> converter) {
-        if (DEBUG) Log.d(TAG, "post() called with: " + "url = [" + url + "]");
 
-        get(url, callBack, simpleErrorListener, converter);
-    }
-
-    public void setConfig(Config config) {
-        this.config = config;
+    public static void setConfig(Config cofig) {
+        config = cofig;
     }
 
     /**
@@ -103,12 +128,12 @@ public class Rosen {
      * @since 1.3
      */
     public void post(@NonNull final String url, final ResultCallBack<InputStream> callBack) {
-        if (DEBUG) Log.d(TAG, "post() called with: " + "url = [" + url + "]");
         post(url, callBack, simpleErrorListener, noNeedConverter);
     }
 
     public void post(@NonNull final String url, final ResultCallBack<InputStream> callBack, OnErrorListener onErrorListener, Converter converter) {
         Getter<InputStream> getter = new Getter<>();
+        Preconditions.checkNotNull(url, "url地址不能为null");
         getter.get(url, callBack, onErrorListener, converter);
     }
 
@@ -144,9 +169,14 @@ public class Rosen {
      * @since 1.4
      */
     public static class Config {
+        /**
+         * The HTTP method (GET,POST,PUT,etc.).
+         */
+        private static final String METHOD_GET = "GET";
         private static int readTimeout;
         private static int connectTimeout;
         private static boolean useCache;
+        private static String method;
 
         public static int getConnectTimeout() {
             return connectTimeout;
@@ -160,6 +190,15 @@ public class Rosen {
          */
         public Config setConnectTimeout(@IntRange(from = 0, to = Integer.MAX_VALUE) int connectTimeout) {
             this.connectTimeout = connectTimeout;
+            return this;
+        }
+
+        public String getMethod() {
+            return method;
+        }
+
+        public Config setMethod(String method) {
+            Config.method = method;
             return this;
         }
 
@@ -270,7 +309,8 @@ public class Rosen {
             get(url, callBack, simpleErrorListener, noNeedConverter);
         }
 
-        public void get(String url, ResultCallBack<R> callBack, OnErrorListener onErrorListener, Converter<InputStream, R> converter) {
+        public void get(@NonNull String url, ResultCallBack<R> callBack, OnErrorListener onErrorListener, Converter<InputStream, R> converter) {
+            Preconditions.checkNotNull(url);
             ResultCallBack<InputStream> resultCallBack = inputStream -> {
                 R r = converter.convert(inputStream);
                 callBack.onResult(r);
