@@ -22,9 +22,10 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by simon on 2016/4/26.
+ * 三级缓存还未实现,现在只是简单的实现了网络缓存,内存和磁盘还正在构建中
+ *
  * <p>
- * from RoseHttp
+ * base on from RoseHttp
  *
  * @version 1.4
  */
@@ -90,6 +91,16 @@ public class Rosen {
     }
 
     /**
+     * 加载url所在的图片
+     *
+     * @param url
+     * @param callBack
+     */
+    public static void getImage(final String url, final ResultCallBack<Bitmap> callBack) {
+        get(url, callBack, InStream2BitmapStragegy);
+    }
+
+    /**
      * 发送get请求
      * <note>if you want to get a string data, you can use requestString() instand</note>
      *
@@ -100,6 +111,7 @@ public class Rosen {
     public static <R> void get(final String url, final ResultCallBack<R> callBack, Converter<InputStream, R> converter) {
         get(url, callBack, simpleErrorListener, converter);
     }
+
 
     /**
      * 发送请求
@@ -267,6 +279,7 @@ public class Rosen {
 
         /**
          * 设置特定的数据获取策略
+         * 如果没有指定，那么将会从三级缓存中获取
          *
          * @param stragegy
          */
@@ -292,9 +305,9 @@ public class Rosen {
                     InStream2String converter = new InStream2String();
                     get(url, (ResultCallBack<R>) callBack, onErrorListener, (Converter<InputStream, R>) converter);
                 };
-                Requester requester = new Requester();
-                mStragegy = requester;
-                requester.request(url, resultCallBack, onErrorListener);
+                Request request = new Request();
+                mStragegy = request;
+                request.request(url, resultCallBack, onErrorListener);
 
             } else {
                 ResultCallBack<InputStream> resultCallBack = inputStream -> {
@@ -312,19 +325,20 @@ public class Rosen {
         public void get(@NonNull String url, ResultCallBack<R> callBack, OnErrorListener onErrorListener, Converter<InputStream, R> converter) {
             Preconditions.checkNotNull(url);
             ResultCallBack<InputStream> resultCallBack = inputStream -> {
+                if (DEBUG) Log.d(TAG, "get() called with: " + "url = [" + url + "]");
                 R r = converter.convert(inputStream);
                 callBack.onResult(r);
             };
-            Requester requester = new Requester();
+            Request request = new Request();
 //            mStragegy = requester;
-            requester.request(url, resultCallBack, onErrorListener);
+            request.request(url, resultCallBack, onErrorListener);
         }
     }
 
     /**
      * 网络数据的请求
      */
-    private static class Requester implements Stragegy<InputStream> {
+    private static class Request implements Stragegy<InputStream> {
 
         @Override
         public void request(String url, ResultCallBack<InputStream> callBack, OnErrorListener onErrorListener) {

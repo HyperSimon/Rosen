@@ -36,8 +36,18 @@ Rosen.get("http://188.188.5.20:8080/zhbj/10007/1452327318UU91.jpg",
 ```
 
 
-with lambda &amp method reference
+with lambda &amp; method reference
 ```java
-Rosen.get("url", imageview::setImageBitmap, Throwable::printStackTrace, Rosen.InStream2Bitmap);
+String picUrl = "http://img3.duitang.com/uploads/item/201605/25/20160525093455_Qa2yR.thumb.700_0.jpeg";
+
+// method 1
+Rosen.get(picUrl, imageview::setImageBitmap, Throwable::printStackTrace, Rosen.InStream2Bitmap);
+
+// method 2
+Rosen.get(picUrl, imageview::setImageBitmap, Rosen.InStream2BitmapStragegy);
+
+// method 3 just use getImage:
+Rosen.getImage(picUrl, imageview::setImageBitmap);
+
 ```
 

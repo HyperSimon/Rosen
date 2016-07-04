@@ -1,5 +1,6 @@
 apply plugin: 'com.android.library'
 apply plugin: 'me.tatarka.retrolambda'
+apply plugin: 'com.novoda.bintray-release' // must be applied after your artifact generating plugin (eg. java / com.android.library)
 
 android {
     compileSdkVersion 23
@@ -19,6 +20,10 @@ android {
         }
     }
 
+    lintOptions {
+        abortOnError false
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -28,15 +33,27 @@ android {
 buildscript {
     repositories {
         mavenCentral()
+        jcenter()
     }
+
     dependencies {
         classpath 'me.tatarka:gradle-retrolambda:3.2.5'
+        classpath 'com.novoda:bintray-release:0.3.4'
     }
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:23.+'
     compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile 'com.android.support:appcompat-v7:23.+'
     testCompile 'junit:junit:4.12'
     compile 'com.google.guava:guava:19.0'
+}
+
+publish {
+    userOrg = 'hyper-simon'
+    groupId = 'com.roselism'
+    artifactId = 'bintray-release'
+    publishVersion = '1.0.1'
+    desc = 'Oh hi, this is a nice description for a project, right?'
+    website = 'https://github.com/SimonWang1996/Rosen.git'
 }
