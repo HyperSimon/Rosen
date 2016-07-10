@@ -6,11 +6,12 @@ import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.util.LruCache;
+import android.widget.ImageView;
 
-import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
+import com.android.internal.util.Predicate;
 import com.roselism.rosen.convert.Converter;
 import com.roselism.rosen.convert.InStream2String;
+import com.roselism.rosen.util.Preconditions;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 三级缓存还未实现,现在只是简单的实现了网络缓存,内存和磁盘还正在构建中
- *
+ * <p>
  * <p>
  * base on from RoseHttp
  *
@@ -32,21 +33,16 @@ import java.util.concurrent.TimeUnit;
 public class Rosen {
     public static final Converter<InputStream, Bitmap> InStream2BitmapStragegy = input -> BitmapFactory.decodeStream(input); // 流转bitmap策略
     public static final Converter<InputStream, String> InStream2StringStragegy = input -> new InStream2String().convert(input); // 流转String策略
+    public final static OnErrorListener simpleErrorListener = throwable -> throwable.printStackTrace();
+    public final static Converter noNeedConverter = parameter -> parameter;
 
     private static final String TAG = "Rosen";
     private static final boolean DEBUG = true;
-    private final static OnErrorListener simpleErrorListener = throwable -> throwable.printStackTrace();
-    private final static Converter noNeedConverter = parameter -> parameter;
     private static final Config defaultConfig = new Config()
             .setConnectTimeout(5000)
             .setReadTimeout(5000)
             .setMethod(Config.METHOD_GET);
     private static Config config = defaultConfig;
-
-
-    public static void requestString(final String url, final ResultCallBack<String> callBack) {
-        requestString(url, callBack, simpleErrorListener);
-    }
 
     /**
      * 请求一个 String
@@ -54,10 +50,53 @@ public class Rosen {
      * @param url
      * @param callBack
      * @param onErrorListener
+     * @deprecated 不再推荐使用
      */
     public static void requestString(final String url, final ResultCallBack<String> callBack, final OnErrorListener onErrorListener) {
         Getter<String> getter = new Getter<>();
         getter.getString(url, callBack, onErrorListener);
+    }
+
+    public static <R> void requestString(final String url, Getter<R> getter) {
+
+    }
+
+    /**
+     * @param url
+     * @param callback
+     * @since 1.5
+     */
+    public static void requestString(final String url, ResultCallBack<String> callback) {
+        Getter<String> getter = new Getter<>();
+        getter.setConverter(Rosen.InStream2StringStragegy);
+        getter.setResultCallBack(callback);
+        getter.get(url);
+    }
+
+    /**
+     * 加载url所在的图片
+     *
+     * @param url
+     * @param callBack
+     * @since 1.4
+     */
+    public static void loadImage(final String url, final ResultCallBack<Bitmap> callBack) {
+        Getter<Bitmap> getter = new Getter<>();
+        getter.setConverter(Rosen.InStream2BitmapStragegy);
+        getter.setResultCallBack(callBack);
+        getter.get(url);
+    }
+
+    /**
+     * @param url
+     * @param imageView
+     * @since 1.5
+     */
+    public static void loadImage(String url, ImageView imageView) {
+        Getter<Bitmap> getter = new Getter<>();
+        getter.setResultCallBack(bitmap -> imageView.setImageBitmap(bitmap))
+                .setConverter(Rosen.InStream2BitmapStragegy);
+        getter.get(url);
     }
 
     /**
@@ -67,16 +106,15 @@ public class Rosen {
      * @return
      */
     @NonNull
-    private static Optional<HttpURLConnection> openConnection(@NonNull String urlPath) {
-        Optional<HttpURLConnection> optional = Optional.absent();
+    private static HttpURLConnection openConnection(@NonNull String urlPath) {
         try {
             URL url = new URL(urlPath);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             configConnection(connection);
-            return optional.fromNullable(connection);
+            return connection;
         } catch (Exception e) {
             e.printStackTrace();
-            return optional.fromNullable(null);
+            return null;
         }
     }
 
@@ -90,15 +128,6 @@ public class Rosen {
         }
     }
 
-    /**
-     * 加载url所在的图片
-     *
-     * @param url
-     * @param callBack
-     */
-    public static void getImage(final String url, final ResultCallBack<Bitmap> callBack) {
-        get(url, callBack, InStream2BitmapStragegy);
-    }
 
     /**
      * 发送get请求
@@ -149,27 +178,6 @@ public class Rosen {
         getter.get(url, callBack, onErrorListener, converter);
     }
 
-    public interface OnErrorListener {
-        void onError(Throwable throwable);
-    }
-
-    /**
-     * 数据请求策略
-     *
-     * @param <T>
-     */
-    private interface Stragegy<T> {
-        void request(final String url, final ResultCallBack<InputStream> callBack, final OnErrorListener onErrorListener);
-    }
-
-    /**
-     * 结果回调接口
-     *
-     * @param <T>
-     */
-    public interface ResultCallBack<T> {
-        void onResult(T t);
-    }
 
     private interface Cacher {
         void add(String key, String value);
@@ -268,82 +276,32 @@ public class Rosen {
         }
     }
 
-    /**
-     * 数据请求
-     *
-     * @param <R> 返回的数据的类型
-     */
-    private static class Getter<R> {
+    private static class Local implements GetStragegy<InputStream> {
 
-        private Stragegy mStragegy;
+        Predicate<String> mPredicate;
 
-        /**
-         * 设置特定的数据获取策略
-         * 如果没有指定，那么将会从三级缓存中获取
-         *
-         * @param stragegy
-         */
-        public void setStragegy(Stragegy stragegy) {
-            this.mStragegy = stragegy;
+        public void setPredicate(Predicate predicate) {
+            mPredicate = predicate;
         }
 
-        /**
-         * 根据一个url获取到一个String
-         *
-         * @param url
-         * @param callBack
-         * @since 1.4
-         */
-        public void getString(String url, ResultCallBack<String> callBack, OnErrorListener onErrorListener) {
-            if (DEBUG)
-                Log.d(TAG, "requestString() called with: " + "url = [" + url + "], callBack = [" + callBack + "], onErrorListener = [" + onErrorListener + "]");
+        @Override
+        public void request(String url, ResultCallBack<InputStream> callBack, OnErrorListener onErrorListener) {
+            if (mPredicate.apply(url)) {
+                // TODO: 16-7-8 加载本地缓存
 
-            if (mStragegy == null) {
-                // TODO: 16-6-18 自行检测，检查内存是否有缓存，没有缓存检查硬盘，没有的话读取网络
-
-                ResultCallBack<InputStream> resultCallBack = inputStream -> {
-                    InStream2String converter = new InStream2String();
-                    get(url, (ResultCallBack<R>) callBack, onErrorListener, (Converter<InputStream, R>) converter);
-                };
-                Request request = new Request();
-                mStragegy = request;
-                request.request(url, resultCallBack, onErrorListener);
-
-            } else {
-                ResultCallBack<InputStream> resultCallBack = inputStream -> {
-                    InStream2String converter = new InStream2String();
-                    get(url, (ResultCallBack<R>) callBack, onErrorListener, (Converter<InputStream, R>) converter);
-                };
-                mStragegy.request(url, resultCallBack, onErrorListener);
             }
-        }
-
-        public void get(String url, ResultCallBack<R> callBack) {
-            get(url, callBack, simpleErrorListener, noNeedConverter);
-        }
-
-        public void get(@NonNull String url, ResultCallBack<R> callBack, OnErrorListener onErrorListener, Converter<InputStream, R> converter) {
-            Preconditions.checkNotNull(url);
-            ResultCallBack<InputStream> resultCallBack = inputStream -> {
-                if (DEBUG) Log.d(TAG, "get() called with: " + "url = [" + url + "]");
-                R r = converter.convert(inputStream);
-                callBack.onResult(r);
-            };
-            Request request = new Request();
-//            mStragegy = requester;
-            request.request(url, resultCallBack, onErrorListener);
         }
     }
 
     /**
      * 网络数据的请求
      */
-    private static class Request implements Stragegy<InputStream> {
+    public static class Request implements GetStragegy<InputStream> {
 
         @Override
         public void request(String url, ResultCallBack<InputStream> callBack, OnErrorListener onErrorListener) {
             new Thread(() -> {
-                HttpURLConnection connection = openConnection(url).orNull();
+                HttpURLConnection connection = openConnection(url);
                 try {
                     InputStream inputStream = connection.getInputStream();
                     callBack.onResult(inputStream);
@@ -368,9 +326,11 @@ public class Rosen {
         public void addInMemory(String key, String value) {
             map.put(key, value);
         }
+
     }
 
     private class BitmapCacher {
+
         LruCache<String, Bitmap> cache = new LruCache<>(10);
 
         public void putInMemory(String key, Bitmap value) {

@@ -46,7 +46,7 @@ Rosen.get(picUrl, imageview::setImageBitmap, Throwable::printStackTrace, Rosen.I
 // method 2
 Rosen.get(picUrl, imageview::setImageBitmap, Rosen.InStream2BitmapStragegy);
 
-// method 3 just use getImage:
+loadImage
 Rosen.getImage(picUrl, imageview::setImageBitmap);
 
 ```

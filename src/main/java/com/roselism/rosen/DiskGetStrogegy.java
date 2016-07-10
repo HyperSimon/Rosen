@@ -6,6 +6,6 @@ public class DiskGetStrogegy implements GetStragegy<InputStream> {
 
     @Override
     public void request(String url, ResultCallBack<InputStream> callBack, OnErrorListener onErrorListener) {
-
+        callBack.onResult(null);
     }
 }
