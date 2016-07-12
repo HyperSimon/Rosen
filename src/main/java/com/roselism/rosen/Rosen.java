@@ -106,16 +106,11 @@ public class Rosen {
      * @return
      */
     @NonNull
-    private static HttpURLConnection openConnection(@NonNull String urlPath) {
-        try {
-            URL url = new URL(urlPath);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            configConnection(connection);
-            return connection;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+    private static HttpURLConnection openConnection(@NonNull String urlPath) throws IOException {
+        URL url = new URL(urlPath);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        configConnection(connection);
+        return connection;
     }
 
     private static void configConnection(HttpURLConnection connection) {
@@ -301,12 +296,15 @@ public class Rosen {
         @Override
         public void request(String url, ResultCallBack<InputStream> callBack, OnErrorListener onErrorListener) {
             new Thread(() -> {
-                HttpURLConnection connection = openConnection(url);
+                HttpURLConnection connection = null;
                 try {
+                    connection = openConnection(url);
                     InputStream inputStream = connection.getInputStream();
                     callBack.onResult(inputStream);
                 } catch (IOException e) {
                     e.printStackTrace();
+                    onErrorListener.onError(e);
+                } catch (NullPointerException e) {
                     onErrorListener.onError(e);
                 } finally {
                     if (connection != null)

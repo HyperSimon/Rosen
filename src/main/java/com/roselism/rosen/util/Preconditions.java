@@ -16,8 +16,8 @@ package com.roselism.rosen.util;
 
 import android.support.annotation.Nullable;
 
-//import com.google.common.annotations.GwtCompatible;
-
+//import  com.google.common.annotations.GwtCompatible;
+// copy from guava
 
 /**
  * Static convenience methods that help a method or constructor check whether it was invoked
